@@ -18,6 +18,9 @@ import {
   runExtension,
   addRoamJSDependency,
   getTreeByBlockUid,
+  getBlockUidAndTextIncludingText,
+  createBlockObserver,
+  createIconButton,
 } from "roam-client";
 import axios from "axios";
 import formatRFC3339 from "date-fns/formatRFC3339";
@@ -76,6 +79,22 @@ const resolveAttendees = (e: Event) => {
 
 const resolveSummary = (e: Event) =>
   e.visibility === "private" ? "busy" : e.summary || "No Summary";
+
+const GCAL_EVENT_URL = "https://www.google.com/calendar/event?eid=";
+const GCAL_EVENT_REGEX = new RegExp(
+  `${GCAL_EVENT_URL.replace(/\//g, "\\/")
+    .replace(/\./g, "\\.")
+    .replace(/\?/g, "\\?")}([\\w\\d]*)`
+);
+const eventUids = {
+  current: new Set<string>(),
+};
+const refreshEventUids = () => {
+  eventUids.current = new Set(
+    getBlockUidAndTextIncludingText(GCAL_EVENT_URL).map(({ uid }) => uid)
+  );
+};
+refreshEventUids();
 
 const fetchGoogleCalendar = async (): Promise<string[]> => {
   const pageTitle = getPageTitleByHtmlElement(document.activeElement);
@@ -228,9 +247,9 @@ const importGoogleCalendar = async (
       callback: () => {*/
   updateBlock({ text: "Loading...", uid: blockUid });
   const parentUid = getParentUidByBlockUid(blockUid);
-  fetchGoogleCalendar().then((bullets) =>
-    pushBullets(bullets, blockUid, parentUid)
-  );
+  fetchGoogleCalendar()
+    .then((bullets) => pushBullets(bullets, blockUid, parentUid))
+    .then(() => setTimeout(refreshEventUids, 1));
   /*  },
       type: "Google Calendar Button",
     });*/
@@ -264,9 +283,11 @@ const loadBlockUid = (pageUid: string) => {
 const importGoogleCalendarCommand = () => {
   const parentUid = getCurrentPageUid();
   const blockUid = loadBlockUid(parentUid);
-  return fetchGoogleCalendar().then((bullets) => {
-    pushBullets(bullets, blockUid, getParentUidByBlockUid(blockUid));
-  });
+  return fetchGoogleCalendar()
+    .then((bullets) => {
+      pushBullets(bullets, blockUid, getParentUidByBlockUid(blockUid));
+    })
+    .then(() => setTimeout(refreshEventUids, 1));
 };
 
 runExtension("google-calendar", () => {
@@ -349,12 +370,48 @@ runExtension("google-calendar", () => {
     className: "rm-block-input",
     callback: (t: HTMLTextAreaElement) => (textareaRef.current = t),
   });
+
+  createBlockObserver((b: HTMLDivElement) => {
+    const { blockUid } = getUids(b);
+    if (eventUids.current.has(blockUid)) {
+      const container = b.closest(".rm-block-main");
+      const icon = createIconButton("edit");
+      icon.style.position = "absolute";
+      icon.style.top = "0";
+      icon.style.right = "0";
+      icon.addEventListener("click", () => {
+        getAccessToken().then((token) => {
+          const text = getTextByBlockUid(blockUid);
+          const eventId = GCAL_EVENT_REGEX.exec(text)?.[1];
+          const edit = atob(eventId).split(" ")[0];
+          return axios
+            .get(
+              `https://www.googleapis.com/calendar/v3/calendars/primary/events/${edit}`,
+              { headers: { Authorization: `Bearer ${token}` } }
+            )
+            .then((r) =>
+              eventRender({
+                edit,
+                blockUid,
+                summary: r.data.summary,
+                description: r.data.description,
+                location: r.data.location,
+                start: new Date(r.data.start.dateTime),
+                end: new Date(r.data.end.dateTime),
+              })
+            );
+        });
+      });
+      container.append(icon);
+    }
+  });
 });
 
 createCustomSmartBlockCommand({
   command: "GOOGLECALENDAR",
   processor: async () =>
     fetchGoogleCalendar().then(async (bullets) => {
+      setTimeout(refreshEventUids, 5000);
       if (bullets.length) {
         bullets.forEach((s) =>
           window.roam42.smartBlocks.activeWorkflow.outputAdditionalBlock(s)

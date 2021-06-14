@@ -16,7 +16,14 @@ import parse from "date-fns/parse";
 import formatRFC3339 from "date-fns/formatRFC3339";
 import { getAccessToken } from "./util";
 import axios from "axios";
-import { createBlock } from "roam-client";
+import {
+  createBlock,
+  getParentUidByBlockUid,
+  getTextByBlockUid,
+  getTreeByBlockUid,
+  TreeNode,
+  updateBlock,
+} from "roam-client";
 
 type Props = {
   summary: string;
@@ -25,12 +32,14 @@ type Props = {
   start: Date;
   end: Date;
   blockUid: string;
+  edit?: string;
 };
 
 const DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
 
 const CreateEventDialog = ({
   onClose,
+  edit,
   summary,
   location,
   description,
@@ -52,7 +61,7 @@ const CreateEventDialog = ({
       onClose={onClose}
       canEscapeKeyClose
       canOutsideClickClose
-      title={"Create Google Calendar Event"}
+      title={`${edit ? "Update" : "Create"} Google Calendar Event`}
     >
       <div className={Classes.DIALOG_BODY}>
         <Label>
@@ -112,7 +121,7 @@ const CreateEventDialog = ({
           <span style={{ color: "darkred" }}>{error}</span>
           {loading && <Spinner size={SpinnerSize.SMALL} />}
           <Button
-            text={"Create"}
+            text={edit ? "Update" : "Create"}
             intent={Intent.PRIMARY}
             onClick={() => {
               setLoading(true);
@@ -120,23 +129,44 @@ const CreateEventDialog = ({
                 () =>
                   getAccessToken().then((token) => {
                     if (token) {
-                      axios
-                        .post(
-                          `https://www.googleapis.com/calendar/v3/calendars/primary/events`,
-                          {
-                            summary: summaryState,
-                            description: descriptionState,
-                            location: locationState,
-                            start: { dateTime: formatRFC3339(startState) },
-                            end: { dateTime: formatRFC3339(endState) },
-                          },
-                          { headers: { Authorization: `Bearer ${token}` } }
-                        )
+                      axios[edit ? "put" : "post"](
+                        `https://www.googleapis.com/calendar/v3/calendars/primary/events${
+                          edit ? `/${edit}` : ""
+                        }`,
+                        {
+                          summary: summaryState,
+                          description: descriptionState,
+                          location: locationState,
+                          start: { dateTime: formatRFC3339(startState) },
+                          end: { dateTime: formatRFC3339(endState) },
+                        },
+                        { headers: { Authorization: `Bearer ${token}` } }
+                      )
                         .then((r) => {
-                          createBlock({
-                            parentUid: blockUid,
-                            node: { text: `Link:: ${r.data.htmlLink}` },
-                          });
+                          if (!edit) {
+                            createBlock({
+                              parentUid: blockUid,
+                              node: { text: `Link:: ${r.data.htmlLink}` },
+                            });
+                          } else {
+                            const blockText = getTextByBlockUid(blockUid);
+                            const nodeToUpdate = blockText.includes(summary)
+                              ? getTreeByBlockUid(blockUid)
+                              : getTreeByBlockUid(
+                                  getParentUidByBlockUid(blockUid)
+                                );
+                            const updateNode = (n: TreeNode) => {
+                              const newText = n.text
+                                .replace(summary, r.data.summary)
+                                .replace(description, r.data.description)
+                                .replace(location, r.data.location);
+                              if (newText !== n.text) {
+                                updateBlock({ text: newText, uid: n.uid });
+                              }
+                              n.children.forEach(updateNode);
+                            };
+                            updateNode(nodeToUpdate);
+                          }
                           onClose();
                         })
                         .catch((e) => {
