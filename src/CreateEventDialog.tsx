@@ -101,6 +101,7 @@ const CreateEventDialog = ({
             inputProps={{
               onFocus,
             }}
+            timePrecision={'minute'}
           />
         </Label>
         <Label>
@@ -113,6 +114,7 @@ const CreateEventDialog = ({
             inputProps={{
               onFocus,
             }}
+            timePrecision={'minute'}
           />
         </Label>
       </div>
