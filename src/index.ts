@@ -430,7 +430,7 @@ registerSmartBlocksCommand({
   text: "GOOGLECALENDAR",
   handler: () =>
     fetchGoogleCalendar().then((bullets) => {
-      setTimeout(refreshEventUids, 5000);
+      setTimeout(refreshEventUids, 1000);
       if (bullets.length) {
         return bullets;
       } else {
