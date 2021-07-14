@@ -21,6 +21,7 @@ import {
   getBlockUidAndTextIncludingText,
   createBlockObserver,
   createIconButton,
+  registerSmartBlocksCommand,
 } from "roam-client";
 import axios from "axios";
 import formatRFC3339 from "date-fns/formatRFC3339";
@@ -407,6 +408,7 @@ runExtension("google-calendar", () => {
   });
 });
 
+// legacy v1
 createCustomSmartBlockCommand({
   command: "GOOGLECALENDAR",
   processor: async () =>
@@ -417,6 +419,20 @@ createCustomSmartBlockCommand({
           window.roam42.smartBlocks.activeWorkflow.outputAdditionalBlock(s)
         );
         return "";
+      } else {
+        return EMPTY_MESSAGE;
+      }
+    }),
+});
+
+// v2
+registerSmartBlocksCommand({
+  text: "GOOGLECALENDAR",
+  handler: () =>
+    fetchGoogleCalendar().then((bullets) => {
+      setTimeout(refreshEventUids, 5000);
+      if (bullets.length) {
+        return bullets;
       } else {
         return EMPTY_MESSAGE;
       }
