@@ -102,6 +102,7 @@ const CreateEventDialog = ({
               onFocus,
             }}
             timePrecision={'minute'}
+            maxDate={new Date(9999,11,31)}
           />
         </Label>
         <Label>
@@ -115,6 +116,7 @@ const CreateEventDialog = ({
               onFocus,
             }}
             timePrecision={'minute'}
+            maxDate={new Date(9999,11,31)}
           />
         </Label>
       </div>
