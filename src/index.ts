@@ -190,8 +190,8 @@ const fetchGoogleCalendar = async (): Promise<string[]> => {
       }
       return [
         ...events
-          .filter((e: Event) => !skipFree || e.transparency !== "transparent")
-          .map((e: Event) => {
+          .filter((e) => !skipFree || e.transparency !== "transparent")
+          .map((e) => {
             const summaryText = resolveSummary(e);
             const summary =
               includeLink && e.htmlLink
@@ -204,12 +204,14 @@ const fetchGoogleCalendar = async (): Promise<string[]> => {
                 : "";
             if (format) {
               return (format as string)
+                // begin @deprecated
                 .replace("/Summary", resolveSummary(e))
                 .replace("/Link", e.htmlLink || "")
                 .replace("/Hangout", e.hangoutLink || "")
                 .replace("/Location", e.location || "")
                 .replace("/Start Time", resolveDate(e.start))
                 .replace("/End Time", resolveDate(e.end))
+                // end @deprecated
                 .replace("{summary}", summary)
                 .replace("{link}", e.htmlLink || "")
                 .replace("{hangout}", e.hangoutLink || "")
@@ -221,7 +223,8 @@ const fetchGoogleCalendar = async (): Promise<string[]> => {
                 )
                 .replace(/{end:?(.*?)}/, (_, format) =>
                   resolveDate({ ...e.end, format })
-                );
+                )
+                .replace(/{calendar}/, e.calendar);
             } else {
               return `${summary} (${resolveDate(e.start)} - ${resolveDate(
                 e.end
