@@ -29,6 +29,7 @@ import startOfDay from "date-fns/startOfDay";
 import endOfDay from "date-fns/endOfDay";
 import format from "date-fns/format";
 import addMinutes from "date-fns/addMinutes";
+import differenceInMinutes from "date-fns/differenceInMinutes";
 import { createConfigObserver } from "roamjs-components";
 import { getAccessToken } from "./util";
 import { render as eventRender } from "./CreateEventDialog";
@@ -70,9 +71,9 @@ const resolveDate = (d: { dateTime?: string; format?: string }) => {
   }
 };
 
-const resolveAttendees = (e: Event) => {
+const resolveAttendees = (e: Event, s = "[[NAME]]") => {
   const attendessListString = (e.attendees || [])
-    .map((attn) => `[[${attn["displayName"] || attn["email"]}]]`)
+    .map((attn) => s.replace("NAME", attn["displayName"] || attn["email"]))
     .join(", ");
 
   return attendessListString;
@@ -203,28 +204,42 @@ const fetchGoogleCalendar = async (): Promise<string[]> => {
                 ? ` - [Zoom](${e.location})`
                 : "";
             if (format) {
-              return (format as string)
-                // begin @deprecated
-                .replace("/Summary", resolveSummary(e))
-                .replace("/Link", e.htmlLink || "")
-                .replace("/Hangout", e.hangoutLink || "")
-                .replace("/Location", e.location || "")
-                .replace("/Start Time", resolveDate(e.start))
-                .replace("/End Time", resolveDate(e.end))
-                // end @deprecated
-                .replace("{summary}", summary)
-                .replace("{link}", e.htmlLink || "")
-                .replace("{hangout}", e.hangoutLink || "")
-                .replace("{confLink}", meetLink + zoomLink || "")
-                .replace("{location}", e.location || "")
-                .replace("{attendees}", resolveAttendees(e) || "")
-                .replace(/{start:?(.*?)}/, (_, format) =>
-                  resolveDate({ ...e.start, format })
-                )
-                .replace(/{end:?(.*?)}/, (_, format) =>
-                  resolveDate({ ...e.end, format })
-                )
-                .replace(/{calendar}/, e.calendar);
+              return (
+                (format as string)
+                  // begin @deprecated
+                  .replace("/Summary", resolveSummary(e))
+                  .replace("/Link", e.htmlLink || "")
+                  .replace("/Hangout", e.hangoutLink || "")
+                  .replace("/Location", e.location || "")
+                  .replace("/Start Time", resolveDate(e.start))
+                  .replace("/End Time", resolveDate(e.end))
+                  // end @deprecated
+                  .replace("{summary}", summary)
+                  .replace("{link}", e.htmlLink || "")
+                  .replace("{hangout}", e.hangoutLink || "")
+                  .replace("{confLink}", meetLink + zoomLink || "")
+                  .replace("{location}", e.location || "")
+                  .replace(/{attendees:?(.*?)}/, (_, format) =>
+                    resolveAttendees(e, format)
+                  )
+                  .replace(/{start:?(.*?)}/, (_, format) =>
+                    resolveDate({ ...e.start, format })
+                  )
+                  .replace(/{end:?(.*?)}/, (_, format) =>
+                    resolveDate({ ...e.end, format })
+                  )
+                  .replace(/{calendar}/, e.calendar)
+                  .replace(
+                    "{duration}",
+                    (e.start?.dateTime && e.end?.dateTime
+                      ? differenceInMinutes(
+                          new Date(e.end.dateTime),
+                          new Date(e.start.dateTime)
+                        )
+                      : 24 * 60
+                    ).toString()
+                  )
+              );
             } else {
               return `${summary} (${resolveDate(e.start)} - ${resolveDate(
                 e.end
