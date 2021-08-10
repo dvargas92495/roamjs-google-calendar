@@ -22,6 +22,7 @@ import {
   createBlockObserver,
   createIconButton,
   registerSmartBlocksCommand,
+  getPageTitleByBlockUid,
 } from "roam-client";
 import axios from "axios";
 import formatRFC3339 from "date-fns/formatRFC3339";
@@ -98,9 +99,10 @@ const refreshEventUids = () => {
 };
 refreshEventUids();
 
-const fetchGoogleCalendar = async (): Promise<string[]> => {
-  const pageTitle = getPageTitleByHtmlElement(document.activeElement);
-  const dateFromPage = parseRoamDate(pageTitle.textContent);
+const fetchGoogleCalendar = async (
+  pageTitle = getPageTitleByHtmlElement(document.activeElement).textContent
+): Promise<string[]> => {
+  const dateFromPage = parseRoamDate(pageTitle);
 
   const legacyConfig = getConfigFromPage(CONFIG);
   const configTree = getTreeByPageName(CONFIG);
@@ -446,13 +448,15 @@ createCustomSmartBlockCommand({
 // v2
 registerSmartBlocksCommand({
   text: "GOOGLECALENDAR",
-  handler: () =>
-    fetchGoogleCalendar().then((bullets) => {
-      setTimeout(refreshEventUids, 1000);
-      if (bullets.length) {
-        return bullets;
-      } else {
-        return EMPTY_MESSAGE;
-      }
-    }),
+  handler:
+    (context: { targetUid: string }) =>
+    () =>
+      fetchGoogleCalendar(getPageTitleByBlockUid(context.targetUid)).then((bullets) => {
+        setTimeout(refreshEventUids, 1000);
+        if (bullets.length) {
+          return bullets;
+        } else {
+          return EMPTY_MESSAGE;
+        }
+      }),
 });
