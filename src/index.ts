@@ -72,9 +72,9 @@ const resolveDate = (d: { dateTime?: string; format?: string }) => {
   }
 };
 
-const resolveAttendees = (e: Event, s = "[[NAME]]") => {
+const resolveAttendees = (e: Event, s:string) => {
   const attendessListString = (e.attendees || [])
-    .map((attn) => s.replace("NAME", attn["displayName"] || attn["email"]))
+    .map((attn) => (s || "[[NAME]]").replace("NAME", attn["displayName"] || attn["email"]))
     .join(", ");
 
   return attendessListString;
