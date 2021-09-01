@@ -5,7 +5,8 @@
   "main": "./build/main.js",
   "scripts": {
     "build": "roamjs-scripts build",
-    "dev": "roamjs-scripts dev"
+    "dev": "roamjs-scripts dev",
+    "test": "jest --config jest.config.ts"
   },
   "license": "MIT",
   "devDependencies": {
