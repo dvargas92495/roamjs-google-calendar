@@ -30,11 +30,11 @@ import startOfDay from "date-fns/startOfDay";
 import endOfDay from "date-fns/endOfDay";
 import format from "date-fns/format";
 import addMinutes from "date-fns/addMinutes";
-import differenceInMinutes from "date-fns/differenceInMinutes";
 import { createConfigObserver } from "roamjs-components";
 import { getAccessToken } from "./util";
 import { render as eventRender } from "./CreateEventDialog";
 import { parseDate } from "chrono-node";
+import { Event, formatEvent } from "./event";
 // import { getRenderRoot } from "../components/hooks";
 // import { render } from "../components/DeprecationWarning";
 
@@ -42,43 +42,11 @@ addRoamJSDependency("google");
 
 const GOOGLE_COMMAND = "Import Google Calendar";
 
-type Event = {
-  transparency: "transparent" | "opaque";
-  summary: string;
-  htmlLink: string;
-  hangoutLink: string;
-  location: string;
-  attendees: { displayName: string; email: string }[];
-  start: { dateTime: string };
-  end: { dateTime: string };
-  visibility: "private" | "public";
-};
-
-const DEFAULT_DATE_FORMAT = "hh:mm a";
 const EMPTY_MESSAGE = "No Events Scheduled for Today!";
 const CONFIG = "roam/js/google-calendar";
 const textareaRef: { current: HTMLTextAreaElement } = {
   current: null,
 };
-
-const resolveDate = (d: { dateTime?: string; format?: string }) => {
-  if (!d?.dateTime) {
-    return "All Day";
-  }
-  const date = new Date(d.dateTime);
-  return format(date, d?.format ? d.format : DEFAULT_DATE_FORMAT);
-};
-
-const resolveAttendees = (e: Event, s:string) => {
-  const attendessListString = (e.attendees || [])
-    .map((attn) => (s || "NAME").replace(/NAME/g, attn["displayName"] || attn["email"]))
-    .join(", ");
-
-  return attendessListString;
-};
-
-const resolveSummary = (e: Event) =>
-  e.visibility === "private" ? "busy" : e.summary || "No Summary";
 
 const GCAL_EVENT_URL = "https://www.google.com/calendar/event?eid=";
 const GCAL_EVENT_REGEX = new RegExp(
@@ -191,62 +159,10 @@ const fetchGoogleCalendar = async (
       return [
         ...events
           .filter((e) => !skipFree || e.transparency !== "transparent")
-          .map((e) => {
-            const summaryText = resolveSummary(e);
-            const summary =
-              includeLink && e.htmlLink
-                ? `[${summaryText}](${e.htmlLink})`
-                : summaryText;
-            const meetLink = e.hangoutLink ? ` - [Meet](${e.hangoutLink})` : "";
-            const zoomLink =
-              e.location && e.location.indexOf("zoom.us") > -1
-                ? ` - [Zoom](${e.location})`
-                : "";
-            if (format) {
-              return (
-                (format as string)
-                  // begin @deprecated
-                  .replace("/Summary", resolveSummary(e))
-                  .replace("/Link", e.htmlLink || "")
-                  .replace("/Hangout", e.hangoutLink || "")
-                  .replace("/Location", e.location || "")
-                  .replace("/Start Time", resolveDate(e.start))
-                  .replace("/End Time", resolveDate(e.end))
-                  // end @deprecated
-                  .replace("{summary}", summary)
-                  .replace("{link}", e.htmlLink || "")
-                  .replace("{hangout}", e.hangoutLink || "")
-                  .replace("{confLink}", meetLink + zoomLink || "")
-                  .replace("{location}", e.location || "")
-                  .replace(/{attendees:?(.*?)}/, (_, format) =>
-                    resolveAttendees(e, format)
-                  )
-                  .replace(/{start:?(.*?)}/, (_, format) =>
-                    resolveDate({ ...e.start, format })
-                  )
-                  .replace(/{end:?(.*?)}/, (_, format) =>
-                    resolveDate({ ...e.end, format })
-                  )
-                  .replace(/{calendar}/, e.calendar)
-                  .replace(
-                    "{duration}",
-                    (e.start?.dateTime && e.end?.dateTime
-                      ? differenceInMinutes(
-                          new Date(e.end.dateTime),
-                          new Date(e.start.dateTime)
-                        )
-                      : 24 * 60
-                    ).toString()
-                  )
-              );
-            } else {
-              return `${summary} (${resolveDate(e.start)} - ${resolveDate(
-                e.end
-              )})${meetLink}${zoomLink}`;
-            }
-          }),
+          .map((e) => formatEvent(e, format, includeLink)),
         ...errors,
       ];
+
     });
 };
 
