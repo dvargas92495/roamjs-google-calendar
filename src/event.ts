@@ -10,13 +10,12 @@ export type Event = {
   htmlLink: string;
   hangoutLink: string;
   location: string;
-  attendees: { displayName: string; email: string }[];
+  attendees: { displayName?: string; email: string }[];
   start: { dateTime: string };
   end: { dateTime: string };
-  visibility: "private" | "public";
+  visibility?: "private" | "public";
   calendar: string;
 };
-
 
 const resolveDate = (d: { dateTime?: string; format?: string }) => {
   if (!d?.dateTime) {
@@ -25,6 +24,7 @@ const resolveDate = (d: { dateTime?: string; format?: string }) => {
   const date = new Date(d.dateTime);
   return format(date, d?.format || DEFAULT_DATE_FORMAT);
 };
+
 const resolveAttendees = (e: Event, s: string) => {
   return (e.attendees || [])
     .map((attn) =>
@@ -32,6 +32,7 @@ const resolveAttendees = (e: Event, s: string) => {
         .replace(/NAME/g, attn["displayName"] || attn["email"]))
     .join(", ");
 };
+
 const resolveSummary = (e: Event) =>
   e.visibility === "private" ? "busy" : e.summary || "No Summary";
 
