@@ -54,6 +54,7 @@ type Event = {
   visibility: "private" | "public";
 };
 
+const DEFAULT_DATE_FORMAT = "hh:mm a";
 const EMPTY_MESSAGE = "No Events Scheduled for Today!";
 const CONFIG = "roam/js/google-calendar";
 const textareaRef: { current: HTMLTextAreaElement } = {
@@ -65,11 +66,7 @@ const resolveDate = (d: { dateTime?: string; format?: string }) => {
     return "All Day";
   }
   const date = new Date(d.dateTime);
-  if (d.format) {
-    return format(date, d.format);
-  } else {
-    return date.toLocaleTimeString();
-  }
+  return format(date, d?.format ? d.format : DEFAULT_DATE_FORMAT);
 };
 
 const resolveAttendees = (e: Event, s:string) => {
