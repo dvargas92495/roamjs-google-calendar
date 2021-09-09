@@ -51,7 +51,7 @@ export const formatEvent = (e: Event, format: string, includeLink: boolean): str
     return (
       (format as string)
         // begin @deprecated
-        .replace("/Summary", resolveSummary(e))
+        .replace("/Summary", summaryText)
         .replace("/Link", e.htmlLink || "")
         .replace("/Hangout", e.hangoutLink || "")
         .replace("/Location", e.location || "")
