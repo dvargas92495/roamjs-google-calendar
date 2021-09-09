@@ -6,7 +6,7 @@
   "scripts": {
     "build": "roamjs-scripts build",
     "dev": "roamjs-scripts dev",
-    "test": "jest --config jest.config.ts"
+    "test": "TZ=UTC jest --config jest.config.ts"
   },
   "license": "MIT",
   "devDependencies": {
