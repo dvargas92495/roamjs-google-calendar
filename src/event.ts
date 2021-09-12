@@ -37,6 +37,16 @@ const resolveSummary = (e: Event) =>
   e.visibility === "private" ? "busy" : e.summary || "No Summary";
 
 export const formatEvent = (e: Event, format: string, includeLink: boolean): string => {
+function resolveDuration(e: Event) {
+  return (e.start?.dateTime && e.end?.dateTime
+      ? differenceInMinutes(
+        new Date(e.end.dateTime),
+        new Date(e.start.dateTime)
+      )
+      : 24 * 60
+  ).toString();
+}
+
   const summaryText = resolveSummary(e);
   const summary =
     includeLink && e.htmlLink
@@ -73,16 +83,7 @@ export const formatEvent = (e: Event, format: string, includeLink: boolean): str
           resolveDate({...e.end, format})
         )
         .replace(/{calendar}/, e.calendar)
-        .replace(
-          "{duration}",
-          (e.start?.dateTime && e.end?.dateTime
-              ? differenceInMinutes(
-                new Date(e.end.dateTime),
-                new Date(e.start.dateTime)
-              )
-              : 24 * 60
-          ).toString()
-        )
+        .replace("{duration}", resolveDuration(e))
     );
   } else {
     return `${summary} (${resolveDate(e.start)} - ${resolveDate(
