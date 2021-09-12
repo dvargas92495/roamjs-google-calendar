@@ -17,6 +17,12 @@ export type Event = {
   calendar: string;
 };
 
+export type EventFormatterFunction = (event: Event) => string;
+
+const customEventFormatterWrapper = (formatter: EventFormatterFunction, event:Event, defaultValue: string): string => {
+  return formatter ? formatter(event) : defaultValue;
+}
+
 const resolveDate = (d: { dateTime?: string; format?: string }) => {
   if (!d?.dateTime) {
     return "All Day";
@@ -36,7 +42,6 @@ const resolveAttendees = (e: Event, s: string) => {
 const resolveSummary = (e: Event) =>
   e.visibility === "private" ? "busy" : e.summary || "No Summary";
 
-export const formatEvent = (e: Event, format: string, includeLink: boolean): string => {
 function resolveDuration(e: Event) {
   return (e.start?.dateTime && e.end?.dateTime
       ? differenceInMinutes(
@@ -47,6 +52,12 @@ function resolveDuration(e: Event) {
   ).toString();
 }
 
+export const formatEvent = (
+  e: Event,
+  format: string,
+  includeLink: boolean,
+  customFormatter?: EventFormatterFunction
+): string => {
   const summaryText = resolveSummary(e);
   const summary =
     includeLink && e.htmlLink
@@ -84,6 +95,7 @@ function resolveDuration(e: Event) {
         )
         .replace(/{calendar}/, e.calendar)
         .replace("{duration}", resolveDuration(e))
+        .replace("{custom}", (tag) => customEventFormatterWrapper(customFormatter, e, tag))
     );
   } else {
     return `${summary} (${resolveDate(e.start)} - ${resolveDate(
