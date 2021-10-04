@@ -29,7 +29,6 @@ import axios from "axios";
 import formatRFC3339 from "date-fns/formatRFC3339";
 import startOfDay from "date-fns/startOfDay";
 import endOfDay from "date-fns/endOfDay";
-import format from "date-fns/format";
 import addMinutes from "date-fns/addMinutes";
 import { createConfigObserver } from "roamjs-components";
 import { getAccessToken } from "./util";
@@ -267,6 +266,7 @@ runExtension("google-calendar", () => {
           ],
         },
       ],
+      versioning: true,
     },
   });
 
