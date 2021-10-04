@@ -23,6 +23,7 @@ import {
   createIconButton,
   registerSmartBlocksCommand,
   getPageTitleByBlockUid,
+  getPageTitleByPageUid,
 } from "roam-client";
 import axios from "axios";
 import formatRFC3339 from "date-fns/formatRFC3339";
@@ -181,7 +182,7 @@ const importGoogleCalendar = async (
       callback: () => {*/
   updateBlock({ text: "Loading...", uid: blockUid });
   const parentUid = getParentUidByBlockUid(blockUid);
-  fetchGoogleCalendar()
+  fetchGoogleCalendar(getPageTitleByPageUid(parentUid))
     .then((bullets) => pushBullets(bullets, blockUid, parentUid))
     .then(() => setTimeout(refreshEventUids, 1));
   /*  },
@@ -215,9 +216,15 @@ const loadBlockUid = (pageUid: string) => {
 };
 
 const importGoogleCalendarCommand = () => {
-  const parentUid = getCurrentPageUid();
+  const focusedUid = window.roamAlphaAPI.ui.getFocusedBlock()?.["block-uid"];
+  const parentUid =
+    (focusedUid &&
+      window.roamAlphaAPI.q(
+        `[:find (pull ?p [:block/uid]) :where [?b :block/uid "${focusedUid}"] [?b :block/page ?p]]`
+      )[0]?.[0]?.uid) ||
+    getCurrentPageUid();
   const blockUid = loadBlockUid(parentUid);
-  return fetchGoogleCalendar()
+  return fetchGoogleCalendar(getPageTitleByPageUid(parentUid))
     .then((bullets) => {
       pushBullets(bullets, blockUid, getParentUidByBlockUid(blockUid));
     })
@@ -361,15 +368,15 @@ createCustomSmartBlockCommand({
 // v2
 registerSmartBlocksCommand({
   text: "GOOGLECALENDAR",
-  handler:
-    (context: { targetUid: string }) =>
-    () =>
-      fetchGoogleCalendar(getPageTitleByBlockUid(context.targetUid)).then((bullets) => {
+  handler: (context: { targetUid: string }) => () =>
+    fetchGoogleCalendar(getPageTitleByBlockUid(context.targetUid)).then(
+      (bullets) => {
         setTimeout(refreshEventUids, 1000);
         if (bullets.length) {
           return bullets;
         } else {
           return EMPTY_MESSAGE;
         }
-      }),
+      }
+    ),
 });
