@@ -34,7 +34,7 @@ import { createConfigObserver } from "roamjs-components";
 import { getAccessToken } from "./util";
 import { render as eventRender } from "./CreateEventDialog";
 import { parseDate } from "chrono-node";
-import { Event, formatEvent } from "./event";
+import { Event, formatEvent, EventFormatterFunction } from "./event";
 // import { getRenderRoot } from "../components/hooks";
 // import { render } from "../components/DeprecationWarning";
 
@@ -63,6 +63,14 @@ const refreshEventUids = () => {
   );
 };
 refreshEventUids();
+
+
+// Allow talking about a custom event formatter attached to the window object
+declare global {
+  interface Window {
+    roamJsGcalCustomEventFormatter: EventFormatterFunction;
+  }
+}
 
 const fetchGoogleCalendar = async (
   pageTitle = getPageTitleByHtmlElement(document.activeElement).textContent
@@ -99,11 +107,13 @@ const fetchGoogleCalendar = async (
     importTree?.children
       ?.find?.((t) => /format/i.test(t.text))
       ?.children?.[0]?.text?.trim?.() || legacyConfig["Format"]?.trim?.();
+
   const dateToUse = isNaN(dateFromPage.valueOf()) ? new Date() : dateFromPage;
   const timeMin = startOfDay(dateToUse);
   const timeMax = endOfDay(timeMin);
   const timeMinParam = encodeURIComponent(formatRFC3339(timeMin));
   const timeMaxParam = encodeURIComponent(formatRFC3339(timeMax));
+  const customEventFormatter = window.roamJsGcalCustomEventFormatter;
 
   return Promise.all(
     calendarIds.map((calendarId) =>
@@ -159,10 +169,9 @@ const fetchGoogleCalendar = async (
       return [
         ...events
           .filter((e) => !skipFree || e.transparency !== "transparent")
-          .map((e) => formatEvent(e, format, includeLink)),
+          .map((e) => formatEvent(e, format, includeLink, customEventFormatter)),
         ...errors,
       ];
-
     });
 };
 

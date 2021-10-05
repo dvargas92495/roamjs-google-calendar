@@ -1,4 +1,4 @@
-import { formatEvent } from "../src/event";
+import { formatEvent, EventFormatterFunction } from "../src/event";
 import { eventFactory } from "./eventFactory";
 import each from 'jest-each';
 
@@ -127,4 +127,36 @@ describe("Test confLink formatting", () => {
     ({has_zoom, has_meet, expected}) => {
       expect(formattedEvent(has_zoom, has_meet)).toEqual(expected);
     });
+});
+
+describe( "Test custom formatter", () => {
+  test("Custom formatter missing", () => {
+    expect(formatEvent(event, "__{custom}__", true)).toBe("__{custom}__");
+  })
+
+  test("Custom formatter basic", () => {
+    const customFormatter: EventFormatterFunction = e => e.summary;
+    expect(formatEvent(event, "__{custom}__", true, customFormatter))
+      .toBe("__Meditation retreat__");
+  })
+
+  test("Custom formatter mixed", () => {
+    const customFormatter: EventFormatterFunction = e => e.start.dateTime;
+    expect(formatEvent(event, "__{summary}__{custom}__", false, customFormatter))
+      .toBe(`__Meditation retreat__${event.start.dateTime}__`);
+  })
+
+  test("Custom formatter advanced attendees", () => {
+    const customFormatter: EventFormatterFunction = e => {
+      const contacts: {[key: string]: string} = {
+        "me@example.com": "Alice Jane",
+        "other@example.com": "Bob John"
+      };
+      return (e.attendees || [])
+        .map(attn => `[[People/${contacts[attn.email] || attn.email}]]`)
+        .join(", ")
+    }
+    expect(formatEvent(event, "{summary} with {custom}", false, customFormatter))
+      .toBe(`Meditation retreat with [[People/Alice Jane]], [[People/Bob John]]`);
+  })
 });
