@@ -86,7 +86,7 @@ const fetchGoogleCalendar = async (
       .map((s) => s as string);
   if (!calendarIds.length) {
     return [
-      `Error: Could not find a calendar to import on the [[${CONFIG}]] page.`,
+      `Error: Could not find a calendar to import on the [[${CONFIG}]] page. Be sure to add one!`,
     ];
   }
   const includeLink =
@@ -243,7 +243,7 @@ runExtension("google-calendar", () => {
               title: "calendars",
               description:
                 'The calendar ids to import events from. To find your calendar id, go to your calendar settings and scroll down to "Integrate Calendar".',
-              defaultValue: ["dvargas92495@gmail.com"],
+              defaultValue: [],
             },
             {
               type: "flag",
