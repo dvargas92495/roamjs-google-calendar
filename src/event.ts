@@ -3,14 +3,18 @@ import format from "date-fns/format";
 
 const DEFAULT_DATE_FORMAT = "hh:mm a";
 
-
 export type Event = {
   transparency: "transparent" | "opaque";
   summary: string;
   htmlLink: string;
   hangoutLink: string;
   location: string;
-  attendees: { displayName?: string; email: string }[];
+  attendees?: {
+    displayName?: string;
+    email: string;
+    self: boolean;
+    responseStatus: "declined" | "accepted";
+  }[];
   start: { dateTime: string };
   end: { dateTime: string };
   visibility?: "private" | "public";
@@ -28,20 +32,22 @@ const resolveDate = (d: { dateTime?: string; format?: string }) => {
 const resolveAttendees = (e: Event, s: string) => {
   return (e.attendees || [])
     .map((attn) =>
-      (s || "NAME")
-        .replace(/NAME/g, attn["displayName"] || attn["email"]))
+      (s || "NAME").replace(/NAME/g, attn["displayName"] || attn["email"])
+    )
     .join(", ");
 };
 
 const resolveSummary = (e: Event) =>
   e.visibility === "private" ? "busy" : e.summary || "No Summary";
 
-export const formatEvent = (e: Event, format: string, includeLink: boolean): string => {
+export const formatEvent = (
+  e: Event,
+  format: string,
+  includeLink: boolean
+): string => {
   const summaryText = resolveSummary(e);
   const summary =
-    includeLink && e.htmlLink
-      ? `[${summaryText}](${e.htmlLink})`
-      : summaryText;
+    includeLink && e.htmlLink ? `[${summaryText}](${e.htmlLink})` : summaryText;
   const meetLink = e.hangoutLink ? ` - [Meet](${e.hangoutLink})` : "";
   const zoomLink =
     e.location && e.location.indexOf("zoom.us") > -1
@@ -67,20 +73,20 @@ export const formatEvent = (e: Event, format: string, includeLink: boolean): str
           resolveAttendees(e, format)
         )
         .replace(/{start:?(.*?)}/, (_, format) =>
-          resolveDate({...e.start, format})
+          resolveDate({ ...e.start, format })
         )
         .replace(/{end:?(.*?)}/, (_, format) =>
-          resolveDate({...e.end, format})
+          resolveDate({ ...e.end, format })
         )
         .replace(/{calendar}/, e.calendar)
         .replace(
           "{duration}",
           (e.start?.dateTime && e.end?.dateTime
-              ? differenceInMinutes(
+            ? differenceInMinutes(
                 new Date(e.end.dateTime),
                 new Date(e.start.dateTime)
               )
-              : 24 * 60
+            : 24 * 60
           ).toString()
         )
     );

@@ -159,10 +159,15 @@ const fetchGoogleCalendar = async (
       return [
         ...events
           .filter((e) => !skipFree || e.transparency !== "transparent")
+          .filter(
+            (e) =>
+              !(e.attendees || []).some(
+                (a) => a.self && a.responseStatus === "declined"
+              )
+          )
           .map((e) => formatEvent(e, format, includeLink)),
         ...errors,
       ];
-
     });
 };
 
