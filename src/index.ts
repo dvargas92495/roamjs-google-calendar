@@ -99,6 +99,10 @@ const fetchGoogleCalendar = async (
     importTree?.children
       ?.find?.((t) => /format/i.test(t.text))
       ?.children?.[0]?.text?.trim?.() || legacyConfig["Format"]?.trim?.();
+  const filter =
+    importTree?.children
+      ?.find?.((t) => /filter/i.test(t.text))
+      ?.children?.[0]?.text?.trim?.() || "";
   const dateToUse = isNaN(dateFromPage.valueOf()) ? new Date() : dateFromPage;
   const timeMin = startOfDay(dateToUse);
   const timeMax = endOfDay(timeMin);
@@ -136,6 +140,13 @@ const fetchGoogleCalendar = async (
     .then((rs) => ({
       events: rs
         .flatMap((r) => r.items.map((i) => ({ ...i, calendar: r.calendar })))
+        .filter(
+          filter
+            ? (r) =>
+                (r.summary && new RegExp(filter).test(r.summary)) ||
+                (r.descripton && new RegExp(filter).test(r.descripton))
+            : () => true
+        )
         .sort((a, b) => {
           if (a.start?.dateTime === b.start?.dateTime) {
             return (a.summary || "").localeCompare(b.summary || "");
@@ -266,7 +277,13 @@ runExtension("google-calendar", () => {
               type: "text",
               title: "format",
               description:
-                "The format events should output in when imported into Roam",
+                "The format events should output in when imported into Roam.",
+            },
+            {
+              type: "text",
+              title: "filter",
+              description:
+                "A regex to filter your events by summary or description.",
             },
           ],
         },
