@@ -95,10 +95,15 @@ const fetchGoogleCalendar = async (
   const skipFree =
     importTree?.children?.some?.((t) => /skip free/i.test(t.text)) ||
     legacyConfig["Skip Free"]?.trim() === "true";
-  const format =
+  const rawFormat =
     importTree?.children
       ?.find?.((t) => /format/i.test(t.text))
       ?.children?.[0]?.text?.trim?.() || legacyConfig["Format"]?.trim?.();
+  const format = (importTree?.children || []).some((t) =>
+    /add todo/i.test(t.text)
+  )
+    ? `{{[[TODO]]}} ${rawFormat}`
+    : rawFormat;
   const filter =
     importTree?.children
       ?.find?.((t) => /filter/i.test(t.text))
@@ -284,6 +289,11 @@ runExtension("google-calendar", () => {
               title: "filter",
               description:
                 "A regex to filter your events by summary or description.",
+            },
+            {
+              type: "flag",
+              title: "add todo",
+              description: "Prefix the format with {{[[TODO]]}} ",
             },
           ],
         },
