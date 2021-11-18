@@ -24,6 +24,7 @@ import {
   registerSmartBlocksCommand,
   getPageTitleByBlockUid,
   getPageTitleByPageUid,
+  TreeNode,
 } from "roam-client";
 import axios from "axios";
 import formatRFC3339 from "date-fns/formatRFC3339";
@@ -35,6 +36,7 @@ import { getAccessToken } from "./util";
 import { render as eventRender } from "./CreateEventDialog";
 import { parseDate } from "chrono-node";
 import { Event, formatEvent } from "./event";
+import CalendarConfig from "./CalendarConfig";
 // import { getRenderRoot } from "../components/hooks";
 // import { render } from "../components/DeprecationWarning";
 
@@ -43,6 +45,7 @@ addRoamJSDependency("google");
 const GOOGLE_COMMAND = "Import Google Calendar";
 
 const EMPTY_MESSAGE = "No Events Scheduled for Today!";
+const UNAUTHORIZED_MESSAGE = `Error: Must log in to Google through the [[roam/js/google]] page`;
 const CONFIG = "roam/js/google-calendar";
 const textareaRef: { current: HTMLTextAreaElement } = {
   current: null,
@@ -71,19 +74,13 @@ const fetchGoogleCalendar = async (
 
   const legacyConfig = getConfigFromPage(CONFIG);
   const configTree = getTreeByPageName(CONFIG);
-  const Authorization = await getAccessToken();
-  if (!Authorization) {
-    return [`Error: Must log in to Google through the [[roam/js/google]] page`];
-  }
   const importTree = configTree.find((t) => /import/i.test(t.text));
 
   const calendarIds =
-    importTree?.children
-      ?.find?.((t) => /calendars/i.test(t.text))
-      ?.children?.map((c) => c.text) ||
+    importTree?.children?.find?.((t) => /calendars/i.test(t.text))?.children ||
     [legacyConfig["Google Calendar"]?.trim()]
       .filter((s) => !!s)
-      .map((s) => s as string);
+      .map((s) => ({ text: s as string, children: [] } as Partial<TreeNode>));
   if (!calendarIds.length) {
     return [
       `Error: Could not find a calendar to import on the [[${CONFIG}]] page. Be sure to add one!`,
@@ -115,32 +112,52 @@ const fetchGoogleCalendar = async (
   const timeMaxParam = encodeURIComponent(formatRFC3339(timeMax));
 
   return Promise.all(
-    calendarIds.map((calendarId) =>
-      axios
-        .get<{
-          items: Event[];
-        }>(
-          `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
-            calendarId
-          )}/events?timeMin=${timeMinParam}&timeMax=${timeMaxParam}&orderBy=startTime&singleEvents=true`,
-          {
-            headers: {
-              Authorization: `Bearer ${Authorization}`,
-            },
-          }
-        )
-        .then((r) => ({ items: r.data.items, calendar: calendarId, error: "" }))
-        .catch((e) => ({
-          items: [] as Event[],
-          calendar: calendarId,
-          error: `Error for calendar ${calendarId}: ${
-            e.response?.data?.error?.message ===
-            "Request failed with status code 404"
-              ? `Could not find calendar or it's not public. For more information on how to make it public, [visit this page](https://roamjs.com/extensions/google-calendar)`
-              : (e.response?.data?.error?.message as string)
-          }`,
-        }))
-    )
+    calendarIds
+      .map((calendarId) => ({
+        calendar: calendarId?.text,
+        account: calendarId?.children[0]?.text,
+      }))
+      .map(({ calendar, account }) =>
+        getAccessToken(account)
+          .then((Authorization) =>
+            Authorization
+              ? axios
+                  .get<{
+                    items: Event[];
+                  }>(
+                    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
+                      calendar
+                    )}/events?timeMin=${timeMinParam}&timeMax=${timeMaxParam}&orderBy=startTime&singleEvents=true`,
+                    {
+                      headers: {
+                        Authorization: `Bearer ${Authorization}`,
+                      },
+                    }
+                  )
+                  .then((r) => ({
+                    items: r.data.items,
+                    calendar,
+                    error: "",
+                  }))
+              : Promise.resolve({
+                  items: [] as Event[],
+                  calendar,
+                  error: `${UNAUTHORIZED_MESSAGE}${
+                    account ? ` for account ${account}` : ""
+                  }`,
+                })
+          )
+          .catch((e) => ({
+            items: [] as Event[],
+            calendar,
+            error: `Error for calendar ${calendar}: ${
+              e.response?.data?.error?.message ===
+              "Request failed with status code 404"
+                ? `Could not find calendar or it's not public. For more information on how to make it public, [visit this page](https://roamjs.com/extensions/google-calendar)`
+                : (e.response?.data?.error?.message as string)
+            }`,
+          }))
+      )
   )
     .then((rs) => ({
       events: rs
@@ -168,9 +185,9 @@ const fetchGoogleCalendar = async (
         }),
       errors: rs.map(({ error }) => error).filter((e) => !!e),
     }))
-    .then(async ({ events, errors }) => {
-      if (!events || events.length === 0) {
-        return [EMPTY_MESSAGE, ...errors];
+    .then(async ({ events = [], errors }) => {
+      if (events.length === 0 && errors.length === 0) {
+        return [EMPTY_MESSAGE];
       }
       return [
         ...events
@@ -260,11 +277,14 @@ runExtension("google-calendar", () => {
           id: "import",
           fields: [
             {
-              type: "multitext",
+              type: "custom",
               title: "calendars",
               description:
                 'The calendar ids to import events from. To find your calendar id, go to your calendar settings and scroll down to "Integrate Calendar".',
               defaultValue: [],
+              options: {
+                component: CalendarConfig,
+              },
             },
             {
               type: "flag",

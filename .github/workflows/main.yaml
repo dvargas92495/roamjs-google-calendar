@@ -6,7 +6,6 @@ on:
       - "src/**"
       - ".github/workflows/main.yaml"
 
-
 jobs:
   deploy:
     runs-on: ubuntu-latest

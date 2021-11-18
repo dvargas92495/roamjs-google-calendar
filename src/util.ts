@@ -9,10 +9,10 @@ import { getOauth } from "roamjs-components";
 import differenceInSeconds from "date-fns/differenceInSeconds";
 import axios from 'axios';
 
-export const getAccessToken = () => {
+export const getAccessToken = (label?: string) => {
   const legacyOauth = getOauth("google-calendar");
   const isLegacy = legacyOauth && legacyOauth !== "{}";
-  const oauth = isLegacy ? legacyOauth : getOauth("google");
+  const oauth = isLegacy ? legacyOauth : getOauth("google", label);
   if (oauth !== "{}") {
     const { access_token, expires_in, refresh_token, node } = JSON.parse(oauth);
     const { time, uid: oauthUid } = node || {};
