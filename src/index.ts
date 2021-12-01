@@ -14,7 +14,6 @@ import {
   getCurrentPageUid,
   getPageTitleByHtmlElement,
   getChildrenLengthByPageUid,
-  createCustomSmartBlockCommand,
   runExtension,
   addRoamJSDependency,
   getTreeByBlockUid,
@@ -25,6 +24,7 @@ import {
   getPageTitleByBlockUid,
   getPageTitleByPageUid,
   TreeNode,
+  InputTextNode,
 } from "roam-client";
 import axios from "axios";
 import formatRFC3339 from "date-fns/formatRFC3339";
@@ -35,7 +35,7 @@ import { createConfigObserver } from "roamjs-components";
 import { getAccessToken } from "./util";
 import { render as eventRender } from "./CreateEventDialog";
 import { parseDate } from "chrono-node";
-import { Event, formatEvent } from "./event";
+import { blockFormatEvent, Event, formatEvent } from "./event";
 import CalendarConfig from "./CalendarConfig";
 // import { getRenderRoot } from "../components/hooks";
 // import { render } from "../components/DeprecationWarning";
@@ -43,6 +43,7 @@ import CalendarConfig from "./CalendarConfig";
 addRoamJSDependency("google");
 
 const GOOGLE_COMMAND = "Import Google Calendar";
+const DEFAULT_FORMAT = `{summary} ({start:hh:mm a} - {end:hh:mm a}){confLink}`;
 
 const EMPTY_MESSAGE = "No Events Scheduled for Today!";
 const UNAUTHORIZED_MESSAGE = `Error: Must log in to Google through the [[roam/js/google]] page`;
@@ -69,7 +70,7 @@ refreshEventUids();
 
 const fetchGoogleCalendar = async (
   pageTitle = getPageTitleByHtmlElement(document.activeElement).textContent
-): Promise<string[]> => {
+): Promise<InputTextNode[]> => {
   const dateFromPage = parseRoamDate(pageTitle);
 
   const legacyConfig = getConfigFromPage(CONFIG);
@@ -83,7 +84,9 @@ const fetchGoogleCalendar = async (
       .map((s) => ({ text: s as string, children: [] } as Partial<TreeNode>));
   if (!calendarIds.length) {
     return [
-      `Error: Could not find a calendar to import on the [[${CONFIG}]] page. Be sure to add one!`,
+      {
+        text: `Error: Could not find a calendar to import on the [[${CONFIG}]] page. Be sure to add one!`,
+      },
     ];
   }
   const includeLink =
@@ -92,15 +95,13 @@ const fetchGoogleCalendar = async (
   const skipFree =
     importTree?.children?.some?.((t) => /skip free/i.test(t.text)) ||
     legacyConfig["Skip Free"]?.trim() === "true";
-  const rawFormat =
-    importTree?.children
-      ?.find?.((t) => /format/i.test(t.text))
-      ?.children?.[0]?.text?.trim?.() || legacyConfig["Format"]?.trim?.();
-  const format = (importTree?.children || []).some((t) =>
-    /add todo/i.test(t.text)
-  )
-    ? `{{[[TODO]]}} ${rawFormat}`
-    : rawFormat;
+  const format = importTree?.children?.find?.((t) => /format/i.test(t.text))
+    ?.children?.[0] || {
+    text: legacyConfig["Format"]?.trim?.() || DEFAULT_FORMAT,
+  };
+  if ((importTree?.children || []).some((t) => /add todo/i.test(t.text))) {
+    format.text = `{{[[TODO]]}} ${format.text}`;
+  }
   const filter =
     importTree?.children
       ?.find?.((t) => /filter/i.test(t.text))
@@ -187,7 +188,7 @@ const fetchGoogleCalendar = async (
     }))
     .then(async ({ events = [], errors }) => {
       if (events.length === 0 && errors.length === 0) {
-        return [EMPTY_MESSAGE];
+        return [{ text: EMPTY_MESSAGE }];
       }
       return [
         ...events
@@ -198,10 +199,40 @@ const fetchGoogleCalendar = async (
                 (a) => a.self && a.responseStatus === "declined"
               )
           )
-          .map((e) => formatEvent(e, format, includeLink)),
-        ...errors,
+          .map((e) => blockFormatEvent(e, format, includeLink)),
+        ...errors.map((e) => ({ text: e })),
       ];
     });
+};
+
+const pushBlocks = (
+  bullets: InputTextNode[],
+  blockUid: string,
+  parentUid: string
+) => {
+  const blockIndex = getOrderByBlockUid(blockUid);
+  for (let index = 0; index < bullets.length; index++) {
+    const node = bullets[index];
+    if (index === 0) {
+      updateBlock({
+        uid: blockUid,
+        ...node,
+      });
+      (node.children || []).forEach((n, o) =>
+        createBlock({
+          node: n,
+          parentUid: blockUid,
+          order: o,
+        })
+      );
+    } else {
+      createBlock({
+        node,
+        parentUid,
+        order: blockIndex + index,
+      });
+    }
+  }
 };
 
 const importGoogleCalendar = async (
@@ -220,7 +251,7 @@ const importGoogleCalendar = async (
   updateBlock({ text: "Loading...", uid: blockUid });
   const parentUid = getParentUidByBlockUid(blockUid);
   fetchGoogleCalendar(getPageTitleByPageUid(parentUid))
-    .then((bullets) => pushBullets(bullets, blockUid, parentUid))
+    .then((blocks) => pushBlocks(blocks, blockUid, parentUid))
     .then(() => setTimeout(refreshEventUids, 1));
   /*  },
       type: "Google Calendar Button",
@@ -262,8 +293,8 @@ const importGoogleCalendarCommand = () => {
     getCurrentPageUid();
   const blockUid = loadBlockUid(parentUid);
   return fetchGoogleCalendar(getPageTitleByPageUid(parentUid))
-    .then((bullets) => {
-      pushBullets(bullets, blockUid, getParentUidByBlockUid(blockUid));
+    .then((blocks) => {
+      pushBlocks(blocks, blockUid, getParentUidByBlockUid(blockUid));
     })
     .then(() => setTimeout(refreshEventUids, 1));
 };
@@ -299,10 +330,11 @@ runExtension("google-calendar", () => {
                 "Whether or not to filter out events marked as 'free'",
             },
             {
-              type: "text",
+              type: "block",
               title: "format",
               description:
-                "The format events should output in when imported into Roam.",
+                "The format each event should output in when imported into Roam.",
+              defaultValue: { text: DEFAULT_FORMAT },
             },
             {
               type: "text",
@@ -400,24 +432,6 @@ runExtension("google-calendar", () => {
   });
 });
 
-// legacy v1
-createCustomSmartBlockCommand({
-  command: "GOOGLECALENDAR",
-  processor: async () =>
-    fetchGoogleCalendar().then(async (bullets) => {
-      setTimeout(refreshEventUids, 5000);
-      if (bullets.length) {
-        bullets.forEach((s) =>
-          window.roam42.smartBlocks.activeWorkflow.outputAdditionalBlock(s)
-        );
-        return "";
-      } else {
-        return EMPTY_MESSAGE;
-      }
-    }),
-});
-
-// v2
 registerSmartBlocksCommand({
   text: "GOOGLECALENDAR",
   handler: (context: { targetUid: string }) => () =>
