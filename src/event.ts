@@ -89,6 +89,6 @@ export const blockFormatEvent = (
           : 24 * 60
         ).toString()
       ),
-    children: format.children.map((c) => blockFormatEvent(e, c, includeLink)),
+    children: (format.children || []).map((c) => blockFormatEvent(e, c, includeLink)),
   };
 };
