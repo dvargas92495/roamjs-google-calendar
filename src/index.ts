@@ -155,7 +155,11 @@ const fetchGoogleCalendar = async (
               e.response?.data?.error?.message ===
               "Request failed with status code 404"
                 ? `Could not find calendar or it's not public. For more information on how to make it public, [visit this page](https://roamjs.com/extensions/google-calendar)`
-                : (e.response?.data?.error?.message as string)
+                : (e.response?.data?.error?.message as string) ||
+                  (e.reponse?.data?.error as string) ||
+                  (typeof e.response?.data === "object"
+                    ? JSON.stringify(e.response.data)
+                    : e.response?.data)
             }`,
           }))
       )
