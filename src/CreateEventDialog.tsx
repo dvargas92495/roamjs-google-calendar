@@ -10,6 +10,7 @@ import {
 } from "@blueprintjs/core";
 import React, { useCallback, useState } from "react";
 import { createOverlayRender } from "roamjs-components";
+import { useOauthAccounts } from "roamjs-components/dist/OauthSelect";
 import { DateInput } from "@blueprintjs/datetime";
 import format from "date-fns/format";
 import parse from "date-fns/parse";
@@ -47,6 +48,7 @@ const CreateEventDialog = ({
   end,
   blockUid,
 }: { onClose: () => void } & Props) => {
+  const { accountDropdown, accountLabel } = useOauthAccounts("google");
   const [summaryState, setSummaryState] = useState(summary);
   const [locationState, setLocationState] = useState(location);
   const [descriptionState, setDescriptionState] = useState(description);
@@ -101,8 +103,8 @@ const CreateEventDialog = ({
             inputProps={{
               onFocus,
             }}
-            timePrecision={'minute'}
-            maxDate={new Date(9999,11,31)}
+            timePrecision={"minute"}
+            maxDate={new Date(9999, 11, 31)}
           />
         </Label>
         <Label>
@@ -115,10 +117,11 @@ const CreateEventDialog = ({
             inputProps={{
               onFocus,
             }}
-            timePrecision={'minute'}
-            maxDate={new Date(9999,11,31)}
+            timePrecision={"minute"}
+            maxDate={new Date(9999, 11, 31)}
           />
         </Label>
+        {accountDropdown}
       </div>
       <div className={Classes.DIALOG_FOOTER}>
         <div className={Classes.DIALOG_FOOTER_ACTIONS}>
@@ -131,7 +134,7 @@ const CreateEventDialog = ({
               setLoading(true);
               setTimeout(
                 () =>
-                  getAccessToken().then((token) => {
+                  getAccessToken(accountLabel).then((token) => {
                     if (token) {
                       axios[edit ? "put" : "post"](
                         `https://www.googleapis.com/calendar/v3/calendars/primary/events${
