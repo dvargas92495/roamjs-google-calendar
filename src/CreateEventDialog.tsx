@@ -8,8 +8,12 @@ import {
   Spinner,
   SpinnerSize,
 } from "@blueprintjs/core";
-import React, { useCallback, useState } from "react";
-import { createOverlayRender } from "roamjs-components";
+import React, { useCallback, useMemo, useState } from "react";
+import {
+  createOverlayRender,
+  getSubTree,
+  MenuItemSelect,
+} from "roamjs-components";
 import { useOauthAccounts } from "roamjs-components/dist/OauthSelect";
 import { DateInput } from "@blueprintjs/datetime";
 import format from "date-fns/format";
@@ -19,6 +23,8 @@ import { getAccessToken } from "./util";
 import axios from "axios";
 import {
   createBlock,
+  getBasicTreeByParentUid,
+  getPageUidByPageTitle,
   getParentUidByBlockUid,
   getTextByBlockUid,
   getTreeByBlockUid,
@@ -48,7 +54,6 @@ const CreateEventDialog = ({
   end,
   blockUid,
 }: { onClose: () => void } & Props) => {
-  const { accountDropdown, accountLabel } = useOauthAccounts("google");
   const [summaryState, setSummaryState] = useState(summary);
   const [locationState, setLocationState] = useState(location);
   const [descriptionState, setDescriptionState] = useState(description);
@@ -57,6 +62,23 @@ const CreateEventDialog = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const onFocus = useCallback(() => setError(""), [setError]);
+  const calendarIds = useMemo(() => {
+    const configTree = getBasicTreeByParentUid(
+      getPageUidByPageTitle("roam/js/google-calendar")
+    );
+    const importTree = getSubTree({ tree: configTree, key: "import" }).children;
+    const calendarTree = getSubTree({
+      tree: importTree,
+      key: "calendars",
+    }).children;
+    return calendarTree.map((calendarId) => ({
+      calendar: calendarId?.text,
+      account: calendarId?.children[0]?.text,
+    }));
+  }, []);
+  const [calendarId, setCalendarId] = useState(
+    calendarIds[0].calendar || "primary"
+  );
   return (
     <Dialog
       isOpen={true}
@@ -121,7 +143,14 @@ const CreateEventDialog = ({
             maxDate={new Date(9999, 11, 31)}
           />
         </Label>
-        {accountDropdown}
+        <Label>
+          Calendar:
+          <MenuItemSelect
+            activeItem={calendarId}
+            onItemSelect={(i) => setCalendarId(i)}
+            items={calendarIds.map((c) => c.calendar)}
+          />
+        </Label>
       </div>
       <div className={Classes.DIALOG_FOOTER}>
         <div className={Classes.DIALOG_FOOTER_ACTIONS}>
@@ -134,10 +163,12 @@ const CreateEventDialog = ({
               setLoading(true);
               setTimeout(
                 () =>
-                  getAccessToken(accountLabel).then((token) => {
+                  getAccessToken(
+                    calendarIds.find((c) => c.calendar === calendarId)?.account
+                  ).then((token) => {
                     if (token) {
                       axios[edit ? "put" : "post"](
-                        `https://www.googleapis.com/calendar/v3/calendars/primary/events${
+                        `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events${
                           edit ? `/${edit}` : ""
                         }`,
                         {
