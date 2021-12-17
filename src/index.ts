@@ -33,7 +33,7 @@ import endOfDay from "date-fns/endOfDay";
 import addMinutes from "date-fns/addMinutes";
 import { createConfigObserver } from "roamjs-components";
 import { getAccessToken } from "./util";
-import { render as eventRender } from "./CreateEventDialog";
+import { render as eventRender, getCalendarIds } from "./CreateEventDialog";
 import { parseDate } from "chrono-node";
 import { blockFormatEvent, Event, formatEvent } from "./event";
 import CalendarConfig from "./CalendarConfig";
@@ -409,26 +409,36 @@ runExtension("google-calendar", () => {
       icon.style.top = "0";
       icon.style.right = "0";
       icon.addEventListener("click", () => {
-        getAccessToken().then((token) => {
-          const text = getTextByBlockUid(blockUid);
-          const eventId = GCAL_EVENT_REGEX.exec(text)?.[1];
-          const edit = atob(eventId).split(" ")[0];
-          return axios
-            .get(
-              `https://www.googleapis.com/calendar/v3/calendars/primary/events/${edit}`,
-              { headers: { Authorization: `Bearer ${token}` } }
-            )
-            .then((r) =>
-              eventRender({
-                edit,
-                blockUid,
-                summary: r.data.summary,
-                description: r.data.description,
-                location: r.data.location,
-                start: new Date(r.data.start.dateTime),
-                end: new Date(r.data.end.dateTime),
-              })
-            );
+        const calendarIds = getCalendarIds();
+        Promise.all(
+          calendarIds.map((c) =>
+            getAccessToken(c.account).then((token) => {
+              const text = getTextByBlockUid(blockUid);
+              const eventId = GCAL_EVENT_REGEX.exec(text)?.[1];
+              const edit = atob(eventId).split(" ")[0];
+              return axios
+                .get(
+                  `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
+                    c.calendar
+                  )}/events/${edit}`,
+                  { headers: { Authorization: `Bearer ${token}` } }
+                )
+                .then(r => ({data: r.data, calendar: c}))
+                .catch(() => undefined);
+            })
+          )
+        ).then((all) => {
+          const r = all.find((r) => r);
+          return eventRender({
+            edit: r.data.id,
+            calendar: r.calendar,
+            blockUid,
+            summary: r.data.summary,
+            description: r.data.description,
+            location: r.data.location,
+            start: new Date(r.data.start.dateTime),
+            end: new Date(r.data.end.dateTime),
+          });
         });
       });
       container.append(icon);

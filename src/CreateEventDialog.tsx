@@ -40,13 +40,32 @@ type Props = {
   end: Date;
   blockUid: string;
   edit?: string;
+  calendar?: {
+    account: string;
+    calendar: string;
+  };
 };
 
 const DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
+export const getCalendarIds = () => {
+  const configTree = getBasicTreeByParentUid(
+    getPageUidByPageTitle("roam/js/google-calendar")
+  );
+  const importTree = getSubTree({ tree: configTree, key: "import" }).children;
+  const calendarTree = getSubTree({
+    tree: importTree,
+    key: "calendars",
+  }).children;
+  return calendarTree.map((calendarId) => ({
+    calendar: calendarId?.text,
+    account: calendarId?.children[0]?.text,
+  }));
+};
 
 const CreateEventDialog = ({
   onClose,
   edit,
+  calendar,
   summary,
   location,
   description,
@@ -62,20 +81,10 @@ const CreateEventDialog = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const onFocus = useCallback(() => setError(""), [setError]);
-  const calendarIds = useMemo(() => {
-    const configTree = getBasicTreeByParentUid(
-      getPageUidByPageTitle("roam/js/google-calendar")
-    );
-    const importTree = getSubTree({ tree: configTree, key: "import" }).children;
-    const calendarTree = getSubTree({
-      tree: importTree,
-      key: "calendars",
-    }).children;
-    return calendarTree.map((calendarId) => ({
-      calendar: calendarId?.text,
-      account: calendarId?.children[0]?.text,
-    }));
-  }, []);
+  const calendarIds = useMemo(
+    () => (calendar ? [calendar] : getCalendarIds()),
+    []
+  );
   const [calendarId, setCalendarId] = useState(
     calendarIds[0].calendar || "primary"
   );
@@ -143,14 +152,16 @@ const CreateEventDialog = ({
             maxDate={new Date(9999, 11, 31)}
           />
         </Label>
-        <Label>
-          Calendar:
-          <MenuItemSelect
-            activeItem={calendarId}
-            onItemSelect={(i) => setCalendarId(i)}
-            items={calendarIds.map((c) => c.calendar)}
-          />
-        </Label>
+        {!calendar && (
+          <Label>
+            Calendar:
+            <MenuItemSelect
+              activeItem={calendarId}
+              onItemSelect={(i) => setCalendarId(i)}
+              items={calendarIds.map((c) => c.calendar)}
+            />
+          </Label>
+        )}
       </div>
       <div className={Classes.DIALOG_FOOTER}>
         <div className={Classes.DIALOG_FOOTER_ACTIONS}>
@@ -168,9 +179,9 @@ const CreateEventDialog = ({
                   ).then((token) => {
                     if (token) {
                       axios[edit ? "put" : "post"](
-                        `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events${
-                          edit ? `/${edit}` : ""
-                        }`,
+                        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
+                          calendarId
+                        )}/events${edit ? `/${edit}` : ""}`,
                         {
                           summary: summaryState,
                           description: descriptionState,
