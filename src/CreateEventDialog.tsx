@@ -150,7 +150,7 @@ const CreateEventDialog = ({
               onFocus,
             }}
             timePrecision={"minute"}
-            maxDate={new Date(9999, 11, 31)}
+            maxDate={addYears(new Date(), 5)}
           />
         </Label>
         {!calendar && (
