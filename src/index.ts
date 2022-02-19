@@ -43,7 +43,7 @@ import CalendarConfig from "./CalendarConfig";
 addRoamJSDependency("google");
 
 const GOOGLE_COMMAND = "Import Google Calendar";
-const DEFAULT_FORMAT = `{summary} ({start:hh:mm a} - {end:hh:mm a}){confLink}`;
+const DEFAULT_FORMAT = `{summary} ({start:hh:mm a} - {end:hh:mm a}){confLink}`;
 
 const EMPTY_MESSAGE = "No Events Scheduled for Today!";
 const UNAUTHORIZED_MESSAGE = `Error: Must log in to Google through the [[roam/js/google]] page`;
