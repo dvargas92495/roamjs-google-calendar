@@ -68,19 +68,19 @@ export const blockFormatEvent = (
       .replace("/Start Time", resolveDate(e.start))
       .replace("/End Time", resolveDate(e.end))
       // end @deprecated
-      .replace("{summary}", summary)
-      .replace("{link}", e.htmlLink || "")
-      .replace("{hangout}", e.hangoutLink || "")
-      .replace("{confLink}", meetLink + zoomLink || "")
-      .replace("{location}", e.location || "")
-      .replace(/{attendees:?(.*?)}/, (_, format) => resolveAttendees(e, format))
-      .replace(/{start:?(.*?)}/, (_, format) =>
+      .replace(/{summary}/g, summary)
+      .replace(/{link}/g, e.htmlLink || "")
+      .replace(/{hangout}/g, e.hangoutLink || "")
+      .replace(/{confLink}/g, meetLink + zoomLink || "")
+      .replace(/{location}/g, e.location || "")
+      .replace(/{attendees:?(.*?)}/g, (_, format) => resolveAttendees(e, format))
+      .replace(/{start:?(.*?)}/g, (_, format) =>
         resolveDate({ ...e.start, format })
       )
-      .replace(/{end:?(.*?)}/, (_, format) => resolveDate({ ...e.end, format }))
-      .replace(/{calendar}/, e.calendar)
+      .replace(/{end:?(.*?)}/g, (_, format) => resolveDate({ ...e.end, format }))
+      .replace(/{calendar}/g, e.calendar)
       .replace(
-        "{duration}",
+        /{duration}/g,
         (e.start?.dateTime && e.end?.dateTime
           ? differenceInMinutes(
               new Date(e.end.dateTime),
