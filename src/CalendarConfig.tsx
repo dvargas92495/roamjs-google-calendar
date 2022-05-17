@@ -1,12 +1,12 @@
 import { Button, InputGroup, Label } from "@blueprintjs/core";
 import React, { useMemo, useState } from "react";
-import {
-  createBlock,
-  getBasicTreeByParentUid,
+import createBlock from "roamjs-components/writes/createBlock";
+import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
+import type {
   RoamBasicNode,
-} from "roam-client";
-import { Description, MenuItemSelect } from "roamjs-components";
-import { getOauthAccounts, toTitle } from "roamjs-components/dist/hooks";
+} from "roamjs-components/types/native";
+import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
+import getOauthAccounts from "roamjs-components/util/getOauthAccounts";
 
 const CalendarConfig = (props: {
   uid?: string;

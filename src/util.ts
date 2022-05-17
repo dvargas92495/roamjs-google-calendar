@@ -1,13 +1,11 @@
-import {
-  localStorageGet,
-  localStorageRemove,
-  localStorageSet,
-  getPageUidByPageTitle,
-  createBlock,
-} from "roam-client";
-import { getOauth } from "roamjs-components";
+import localStorageGet from "roamjs-components/util/localStorageGet";
+import localStorageRemove from "roamjs-components/util/localStorageRemove";
+import localStorageSet from "roamjs-components/util/localStorageSet";
+import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
+import createBlock from "roamjs-components/writes/createBlock";
+import getOauth from "roamjs-components/util/getOauth";
 import differenceInSeconds from "date-fns/differenceInSeconds";
-import axios from 'axios';
+import axios from "axios";
 
 export const getAccessToken = (label?: string) => {
   const legacyOauth = getOauth("google-calendar");
@@ -60,14 +58,15 @@ export const getAccessToken = (label?: string) => {
               });
               if (isLegacy) {
                 const parentUid = getPageUidByPageTitle("roam/js/google");
-                const uid = createBlock({
+                createBlock({
                   parentUid,
                   node: { text: "oauth" },
-                });
-                window.roamAlphaAPI.moveBlock({
-                  location: { "parent-uid": uid, order: 0 },
-                  block: { uid: oauthUid },
-                });
+                }).then((uid) =>
+                  window.roamAlphaAPI.moveBlock({
+                    location: { "parent-uid": uid, order: 0 },
+                    block: { uid: oauthUid },
+                  })
+                );
               }
             }
             return r.data.access_token;

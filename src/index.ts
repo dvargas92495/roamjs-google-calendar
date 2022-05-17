@@ -1,42 +1,38 @@
-import {
-  addButtonListener,
-  createHTMLObserver,
-  pushBullets,
-  getConfigFromPage,
-  parseRoamDate,
-  getParentUidByBlockUid,
-  getTreeByPageName,
-  createBlock,
-  getUids,
-  getOrderByBlockUid,
-  updateBlock,
-  getTextByBlockUid,
-  getCurrentPageUid,
-  getPageTitleByHtmlElement,
-  getChildrenLengthByPageUid,
-  runExtension,
-  addRoamJSDependency,
-  getTreeByBlockUid,
-  getBlockUidAndTextIncludingText,
-  createBlockObserver,
-  createIconButton,
-  registerSmartBlocksCommand,
-  getPageTitleByBlockUid,
-  getPageTitleByPageUid,
-  TreeNode,
-  InputTextNode,
-} from "roam-client";
+import createButtonObserver from "roamjs-components/dom/createButtonObserver";
+import createHTMLObserver from "roamjs-components/dom/createHTMLObserver";
+import parseRoamDate from "roamjs-components/date/parseRoamDate";
+import getParentUidByBlockUid from "roamjs-components/queries/getParentUidByBlockUid";
+import createBlock from "roamjs-components/writes/createBlock";
+import getUids from "roamjs-components/dom/getUids";
+import getOrderByBlockUid from "roamjs-components/queries/getOrderByBlockUid";
+import updateBlock from "roamjs-components/writes/updateBlock";
+import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
+import getCurrentPageUid from "roamjs-components/dom/getCurrentPageUid";
+import getPageTitleByHtmlElement from "roamjs-components/dom/getPageTitleByHtmlElement";
+import getChildrenLengthByPageUid from "roamjs-components/queries/getChildrenLengthByPageUid";
+import runExtension from "roamjs-components/util/runExtension";
+import addRoamJSDependency from "roamjs-components/dom/addRoamJSDependency";
+import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
+import getBlockUidAndTextIncludingText from "roamjs-components/queries/getBlockUidAndTextIncludingText";
+import createBlockObserver from "roamjs-components/dom/createBlockObserver";
+import createIconButton from "roamjs-components/dom/createIconButton";
+import registerSmartBlocksCommand from "roamjs-components/util/registerSmartBlocksCommand";
+import getPageTitleByBlockUid from "roamjs-components/queries/getPageTitleByBlockUid";
+import getPageTitleByPageUid from "roamjs-components/queries/getPageTitleByPageUid";
+import type { TreeNode, InputTextNode } from "roamjs-components/types/native";
 import axios from "axios";
 import formatRFC3339 from "date-fns/formatRFC3339";
 import startOfDay from "date-fns/startOfDay";
 import endOfDay from "date-fns/endOfDay";
 import addMinutes from "date-fns/addMinutes";
-import { createConfigObserver } from "roamjs-components";
+import { createConfigObserver } from "roamjs-components/components/ConfigPage";
 import { getAccessToken } from "./util";
 import { render as eventRender, getCalendarIds } from "./CreateEventDialog";
-import { parseDate } from "chrono-node";
 import { blockFormatEvent, Event, formatEvent } from "./event";
 import CalendarConfig from "./CalendarConfig";
+import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
+import getUidsFromButton from "roamjs-components/dom/getUidsFromButton";
+import parseNlpDate from "roamjs-components/date/parseNlpDate";
 // import { getRenderRoot } from "../components/hooks";
 // import { render } from "../components/DeprecationWarning";
 
@@ -73,15 +69,12 @@ const fetchGoogleCalendar = async (
 ): Promise<InputTextNode[]> => {
   const dateFromPage = parseRoamDate(pageTitle);
 
-  const legacyConfig = getConfigFromPage(CONFIG);
-  const configTree = getTreeByPageName(CONFIG);
+  const configTree = getBasicTreeByParentUid(getPageUidByPageTitle(CONFIG));
   const importTree = configTree.find((t) => /import/i.test(t.text));
 
-  const calendarIds =
-    importTree?.children?.find?.((t) => /calendars/i.test(t.text))?.children ||
-    [legacyConfig["Google Calendar"]?.trim()]
-      .filter((s) => !!s)
-      .map((s) => ({ text: s as string, children: [] } as Partial<TreeNode>));
+  const calendarIds = importTree?.children?.find?.((t) =>
+    /calendars/i.test(t.text)
+  )?.children;
   if (!calendarIds.length) {
     return [
       {
@@ -89,15 +82,15 @@ const fetchGoogleCalendar = async (
       },
     ];
   }
-  const includeLink =
-    importTree?.children?.some?.((t) => /include event link/i.test(t.text)) ||
-    legacyConfig["Include Event Link"]?.trim() === "true";
-  const skipFree =
-    importTree?.children?.some?.((t) => /skip free/i.test(t.text)) ||
-    legacyConfig["Skip Free"]?.trim() === "true";
+  const includeLink = importTree?.children?.some?.((t) =>
+    /include event link/i.test(t.text)
+  );
+  const skipFree = importTree?.children?.some?.((t) =>
+    /skip free/i.test(t.text)
+  );
   const format = importTree?.children?.find?.((t) => /format/i.test(t.text))
     ?.children?.[0] || {
-    text: legacyConfig["Format"]?.trim?.() || DEFAULT_FORMAT,
+    text: DEFAULT_FORMAT,
   };
   if ((importTree?.children || []).some((t) => /add todo/i.test(t.text))) {
     format.text = `{{[[TODO]]}} ${format.text}`;
@@ -239,12 +232,7 @@ const pushBlocks = (
   }
 };
 
-const importGoogleCalendar = async (
-  _?: {
-    [key: string]: string;
-  },
-  blockUid?: string
-) => {
+const importGoogleCalendar = async (blockUid?: string) => {
   /** Roam has no way to activate command palette on mobile yet -.-
     const parent = getRenderRoot("google-calendar-deprecation");
     render({
@@ -295,11 +283,12 @@ const importGoogleCalendarCommand = () => {
         `[:find (pull ?p [:block/uid]) :where [?b :block/uid "${focusedUid}"] [?b :block/page ?p]]`
       )[0]?.[0]?.uid) ||
     getCurrentPageUid();
-  const blockUid = loadBlockUid(parentUid);
-  return fetchGoogleCalendar(getPageTitleByPageUid(parentUid))
-    .then((blocks) => {
-      pushBlocks(blocks, blockUid, getParentUidByBlockUid(blockUid));
-    })
+  return loadBlockUid(parentUid)
+    .then((blockUid) =>
+      fetchGoogleCalendar(getPageTitleByPageUid(parentUid)).then((blocks) => {
+        pushBlocks(blocks, blockUid, getParentUidByBlockUid(blockUid));
+      })
+    )
     .then(() => setTimeout(refreshEventUids, 1));
 };
 
@@ -358,7 +347,15 @@ runExtension("google-calendar", () => {
     },
   });
 
-  addButtonListener(GOOGLE_COMMAND, importGoogleCalendar);
+  createButtonObserver({
+    attribute: GOOGLE_COMMAND,
+    render: (b) =>
+      (b.onclick = (e) => {
+        importGoogleCalendar(getUidsFromButton(b).blockUid);
+        e.preventDefault();
+        e.stopPropagation();
+      }),
+  });
   window.roamAlphaAPI.ui.commandPalette.addCommand({
     label: "Import Google Calendar",
     callback: importGoogleCalendarCommand,
@@ -368,16 +365,16 @@ runExtension("google-calendar", () => {
     label: "Add Google Calendar Event",
     callback: () => {
       const blockUid = window.roamAlphaAPI.ui.getFocusedBlock()?.["block-uid"];
-      const node = blockUid && getTreeByBlockUid(blockUid);
-      const props = node && {
-        summary: node.text,
+      const children = blockUid && getBasicTreeByParentUid(blockUid);
+      const props = {
+        summary: getTextByBlockUid(blockUid),
         ...Object.fromEntries(
-          node.children.map((t) => {
+          children.map((t) => {
             const [key, value] = t.text.split("::").map((s) => s.trim());
             const attr = key.toLowerCase();
             return [
               attr,
-              ["start", "end"].includes(attr) ? parseDate(value) : value,
+              ["start", "end"].includes(attr) ? parseNlpDate(value) : value,
             ];
           })
         ),
@@ -423,7 +420,7 @@ runExtension("google-calendar", () => {
                   )}/events/${edit}`,
                   { headers: { Authorization: `Bearer ${token}` } }
                 )
-                .then(r => ({data: r.data, calendar: c}))
+                .then((r) => ({ data: r.data, calendar: c }))
                 .catch(() => undefined);
             })
           )

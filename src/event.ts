@@ -1,6 +1,6 @@
 import differenceInMinutes from "date-fns/differenceInMinutes";
 import format from "date-fns/format";
-import { InputTextNode } from "roam-client";
+import type { InputTextNode } from "roamjs-components/types/native";
 
 const DEFAULT_DATE_FORMAT = "hh:mm a";
 

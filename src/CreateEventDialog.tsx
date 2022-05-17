@@ -9,12 +9,10 @@ import {
   SpinnerSize,
 } from "@blueprintjs/core";
 import React, { useCallback, useMemo, useState } from "react";
-import {
-  createOverlayRender,
-  getSubTree,
-  MenuItemSelect,
-} from "roamjs-components";
-import { useOauthAccounts } from "roamjs-components/dist/OauthSelect";
+import createOverlayRender from "roamjs-components/util/createOverlayRender";
+import getSubTree from "roamjs-components/util/getSubTree";
+import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
+import { useOauthAccounts } from "roamjs-components/components/OauthSelect";
 import { DateInput } from "@blueprintjs/datetime";
 import format from "date-fns/format";
 import parse from "date-fns/parse";
