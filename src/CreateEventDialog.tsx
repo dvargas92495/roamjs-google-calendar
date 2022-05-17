@@ -12,23 +12,19 @@ import React, { useCallback, useMemo, useState } from "react";
 import createOverlayRender from "roamjs-components/util/createOverlayRender";
 import getSubTree from "roamjs-components/util/getSubTree";
 import MenuItemSelect from "roamjs-components/components/MenuItemSelect";
-import { useOauthAccounts } from "roamjs-components/components/OauthSelect";
 import { DateInput } from "@blueprintjs/datetime";
 import format from "date-fns/format";
 import parse from "date-fns/parse";
 import formatRFC3339 from "date-fns/formatRFC3339";
 import { getAccessToken } from "./util";
 import axios from "axios";
-import {
-  createBlock,
-  getBasicTreeByParentUid,
-  getPageUidByPageTitle,
-  getParentUidByBlockUid,
-  getTextByBlockUid,
-  getTreeByBlockUid,
-  TreeNode,
-  updateBlock,
-} from "roam-client";
+import type { RoamBasicNode, TreeNode } from "roamjs-components/types/native";
+import createBlock from "roamjs-components/writes/createBlock";
+import getBasicTreeByParentUid from "roamjs-components/queries/getBasicTreeByParentUid";
+import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
+import getParentUidByBlockUid from "roamjs-components/queries/getParentUidByBlockUid";
+import getTextByBlockUid from "roamjs-components/queries/getTextByBlockUid";
+import updateBlock from "roamjs-components/writes/updateBlock";
 import addYears from "date-fns/addYears";
 
 type Props = {
@@ -198,12 +194,14 @@ const CreateEventDialog = ({
                             });
                           } else {
                             const blockText = getTextByBlockUid(blockUid);
-                            const nodeToUpdate = blockText.includes(summary)
-                              ? getTreeByBlockUid(blockUid)
-                              : getTreeByBlockUid(
+                            const nodeChildrenUpdate = blockText.includes(
+                              summary
+                            )
+                              ? getBasicTreeByParentUid(blockUid)
+                              : getBasicTreeByParentUid(
                                   getParentUidByBlockUid(blockUid)
                                 );
-                            const updateNode = (n: TreeNode) => {
+                            const updateNode = (n: RoamBasicNode) => {
                               const newText = n.text
                                 .replace(summary, r.data.summary)
                                 .replace(description, r.data.description)
@@ -213,7 +211,11 @@ const CreateEventDialog = ({
                               }
                               n.children.forEach(updateNode);
                             };
-                            updateNode(nodeToUpdate);
+                            updateNode({
+                              text: blockText,
+                              children: nodeChildrenUpdate,
+                              uid: blockUid,
+                            });
                           }
                           onClose();
                         })
