@@ -445,15 +445,17 @@ runExtension("google-calendar", () => {
 
 registerSmartBlocksCommand({
   text: "GOOGLECALENDAR",
+  help: "Import your events for today from your Google Calendar integration.",
   handler: (context: { targetUid: string }) => () =>
-    fetchGoogleCalendar(getPageTitleByBlockUid(context.targetUid)).then(
-      (bullets) => {
-        setTimeout(refreshEventUids, 1000);
-        if (bullets.length) {
-          return bullets;
-        } else {
-          return EMPTY_MESSAGE;
-        }
+    fetchGoogleCalendar(
+      getPageTitleByBlockUid(context.targetUid) ||
+        getPageTitleByPageUid(context.targetUid)
+    ).then((bullets) => {
+      setTimeout(refreshEventUids, 1000);
+      if (bullets.length) {
+        return bullets;
+      } else {
+        return EMPTY_MESSAGE;
       }
-    ),
+    }),
 });

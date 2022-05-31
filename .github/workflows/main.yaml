@@ -22,4 +22,4 @@ jobs:
           source: build
           path: google-calendar
           release_token: ${{ secrets.ROAMJS_RELEASE_TOKEN }}
-          email: dvargas92495@gmail.com
+          email: support@roamjs.com
