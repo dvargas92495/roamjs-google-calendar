@@ -348,7 +348,8 @@ runExtension("google-calendar", () => {
   });
 
   createButtonObserver({
-    attribute: GOOGLE_COMMAND,
+    attribute: GOOGLE_COMMAND.replace(/\s/g, '-'),
+    shortcut: GOOGLE_COMMAND,
     render: (b) =>
       (b.onclick = (e) => {
         importGoogleCalendar(getUidsFromButton(b).blockUid);
