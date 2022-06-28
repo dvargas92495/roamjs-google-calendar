@@ -392,6 +392,44 @@ runExtension("google-calendar", () => {
     },
   });
 
+  window.roamAlphaAPI.ui.commandPalette.addCommand({
+    label: "Edit Google Calendar Event",
+    callback: () => {
+      const blockUid = window.roamAlphaAPI.ui.getFocusedBlock()?.["block-uid"];
+      const calendarIds = getCalendarIds();
+      Promise.all(
+        calendarIds.map((c) =>
+          getAccessToken(c.account).then((token) => {
+            const text = getTextByBlockUid(blockUid);
+            const eventId = GCAL_EVENT_REGEX.exec(text)?.[1];
+            const edit = atob(eventId).split(" ")[0];
+            return axios
+              .get(
+                `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
+                  c.calendar
+                )}/events/${edit}`,
+                { headers: { Authorization: `Bearer ${token}` } }
+              )
+              .then((r) => ({ data: r.data, calendar: c }))
+              .catch(() => undefined);
+          })
+        )
+      ).then((all) => {
+        const r = all.find((r) => r);
+        return eventRender({
+          edit: r.data.id,
+          calendar: r.calendar,
+          blockUid,
+          summary: r.data.summary,
+          description: r.data.description,
+          location: r.data.location,
+          start: new Date(r.data.start.dateTime),
+          end: new Date(r.data.end.dateTime),
+        });
+      });
+    },
+  });
+
   createHTMLObserver({
     tag: "TEXTAREA",
     className: "rm-block-input",
