@@ -90,6 +90,8 @@ const CreateEventDialog = ({
       canEscapeKeyClose
       canOutsideClickClose
       title={`${edit ? "Update" : "Create"} Google Calendar Event`}
+      enforceFocus={false}
+      autoFocus={false}
     >
       <div className={Classes.DIALOG_BODY}>
         <Label>
