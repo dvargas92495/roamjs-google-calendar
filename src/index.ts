@@ -348,7 +348,7 @@ runExtension("google-calendar", () => {
   });
 
   createButtonObserver({
-    attribute: GOOGLE_COMMAND.replace(/\s/g, '-'),
+    attribute: GOOGLE_COMMAND.replace(/\s/g, "-"),
     shortcut: GOOGLE_COMMAND,
     render: (b) =>
       (b.onclick = (e) => {
@@ -366,9 +366,9 @@ runExtension("google-calendar", () => {
     label: "Add Google Calendar Event",
     callback: () => {
       const blockUid = window.roamAlphaAPI.ui.getFocusedBlock()?.["block-uid"];
-      const children = blockUid && getBasicTreeByParentUid(blockUid);
+      const children = blockUid ? getBasicTreeByParentUid(blockUid) : [];
       const props = {
-        summary: getTextByBlockUid(blockUid),
+        summary: blockUid ? getTextByBlockUid(blockUid) : "",
         ...Object.fromEntries(
           children.map((t) => {
             const [key, value] = t.text.split("::").map((s) => s.trim());

@@ -81,7 +81,7 @@ const CreateEventDialog = ({
     []
   );
   const [calendarId, setCalendarId] = useState(
-    calendarIds[0].calendar || "primary"
+    calendarIds[0]?.calendar || "primary"
   );
   return (
     <Dialog
@@ -190,10 +190,21 @@ const CreateEventDialog = ({
                       )
                         .then((r) => {
                           if (!edit) {
-                            createBlock({
-                              parentUid: blockUid,
-                              node: { text: `Link:: ${r.data.htmlLink}` },
-                            });
+                            if (blockUid)
+                              createBlock({
+                                parentUid: blockUid,
+                                node: { text: `Link:: ${r.data.htmlLink}` },
+                              });
+                            else
+                              // @ts-ignore
+                              (window.roamAlphaAPI.ui.mainWindow
+                                .getOpenPageOrBlockUid() as Promise<string>)
+                                .then((parentUid) =>
+                                  createBlock({
+                                    parentUid,
+                                    node: { text: `Link:: ${r.data.htmlLink}` },
+                                  })
+                                );
                           } else {
                             const blockText = getTextByBlockUid(blockUid);
                             const nodeChildrenUpdate = blockText.includes(
