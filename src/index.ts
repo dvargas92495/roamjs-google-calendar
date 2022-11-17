@@ -33,6 +33,7 @@ import CalendarConfig from "./CalendarConfig";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import getUidsFromButton from "roamjs-components/dom/getUidsFromButton";
 import parseNlpDate from "roamjs-components/date/parseNlpDate";
+import { renderSimpleAlert } from "roamjs-components";
 // import { getRenderRoot } from "../components/hooks";
 // import { render } from "../components/DeprecationWarning";
 
@@ -293,6 +294,11 @@ const importGoogleCalendarCommand = () => {
 };
 
 runExtension("google-calendar", () => {
+  renderSimpleAlert({
+    content: `ATTENTION: This RoamJS extension (google-calendar) could now be found in the RoamDepot! It has been migrated to the **google** extension from RoamDepot, which you could find by entering the Roam Depot Marketplace from the command palette.
+
+Please remove the \`{{[[roam/js]]}}\` code that installed this extension and refresh before installing from RoamDepot.`,
+  });
   createConfigObserver({
     title: CONFIG,
     config: {
