@@ -33,7 +33,7 @@ import CalendarConfig from "./CalendarConfig";
 import getPageUidByPageTitle from "roamjs-components/queries/getPageUidByPageTitle";
 import getUidsFromButton from "roamjs-components/dom/getUidsFromButton";
 import parseNlpDate from "roamjs-components/date/parseNlpDate";
-import { renderSimpleAlert } from "roamjs-components";
+import { render as renderSimpleAlert } from "roamjs-components/components/SimpleAlert";
 // import { getRenderRoot } from "../components/hooks";
 // import { render } from "../components/DeprecationWarning";
 
